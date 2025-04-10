@@ -1,0 +1,12 @@
+{
+  "target": "bcm27xx",
+  "subtarget": "bcm2711",
+  "profile": "generic",
+  "openwrt_version": "23.05.0",
+  "build_version": "1.0.0",
+  "packages": [
+    "curl"
+  ],
+  "repositories": [],
+  "created_at": "2025-04-10T15:59:00.698529"
+}

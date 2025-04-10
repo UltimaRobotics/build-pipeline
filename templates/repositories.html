@@ -3,7 +3,7 @@
 {% block title %} - Repositories{% endblock %}
 
 {% block content %}
-<div class="card mb-4">
+<div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="card-title mb-0">
             <i class="bi bi-git me-2"></i>
@@ -14,138 +14,71 @@
         </a>
     </div>
     <div class="card-body">
-        <div class="alert alert-info">
-            <i class="bi bi-info-circle-fill me-2"></i>
-            Custom repositories allow you to include packages that are not in the official OpenWrt package feed.
-        </div>
-        
-        {% if repositories %}
-            <div class="table-responsive">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>URL</th>
-                            <th>Branch</th>
-                            <th>Status</th>
-                            <th>Packages</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>URL</th>
+                        <th>Branch</th>
+                        <th>Packages</th>
+                        <th>Status</th>
+                        <th>Updated</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if repositories %}
                         {% for repo in repositories %}
-                            <tr>
-                                <td>{{ repo.name }}</td>
-                                <td>
-                                    <code class="text-truncate d-inline-block" style="max-width: 200px;">{{ repo.url }}</code>
-                                </td>
-                                <td>{{ repo.branch }}</td>
-                                <td>
-                                    {% if repo.enabled %}
-                                        <span class="badge bg-success">Enabled</span>
-                                    {% else %}
-                                        <span class="badge bg-secondary">Disabled</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if repo.packages %}
-                                        <span class="badge bg-info">{{ repo.packages|length }}</span>
-                                        <button type="button" class="btn btn-sm btn-link" 
-                                                data-bs-toggle="modal" 
-                                                data-bs-target="#packagesModal{{ repo.id }}">
-                                            View
+                        <tr>
+                            <td>{{ repo.name }}</td>
+                            <td class="text-truncate" style="max-width: 200px;">{{ repo.url }}</td>
+                            <td>{{ repo.branch }}</td>
+                            <td>
+                                {% if repo.packages %}
+                                    <span class="badge bg-info">{{ repo.packages|length }}</span>
+                                    <button type="button" class="btn btn-sm btn-link" data-bs-toggle="popover" data-bs-placement="top" 
+                                            title="Packages" data-bs-content="{{ repo.packages|join(', ') }}">
+                                        View
+                                    </button>
+                                {% else %}
+                                    <span class="text-muted">None</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if repo.enabled %}
+                                    <span class="badge bg-success">Enabled</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Disabled</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ repo.updated_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>
+                                <div class="btn-group">
+                                    <a href="{{ url_for('edit_repository', repo_id=repo.id) }}" class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </a>
+                                    <form action="{{ url_for('toggle_repository', repo_id=repo.id) }}" method="post" class="d-inline">
+                                        <button type="submit" class="btn btn-sm {% if repo.enabled %}btn-outline-secondary{% else %}btn-outline-success{% endif %}">
+                                            <i class="bi {% if repo.enabled %}bi-toggle-on{% else %}bi-toggle-off{% endif %}"></i>
                                         </button>
-                                    {% else %}
-                                        <span class="text-muted">No packages</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    <div class="btn-group" role="group">
-                                        <a href="{{ url_for('edit_repository', repo_id=repo.id) }}" class="btn btn-sm btn-outline-primary">
-                                            <i class="bi bi-pencil"></i>
-                                        </a>
-                                        <button type="button" class="btn btn-sm btn-outline-danger" 
-                                                data-bs-toggle="modal" 
-                                                data-bs-target="#deleteModal{{ repo.id }}">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                        <form method="post" action="{{ url_for('toggle_repository', repo_id=repo.id) }}">
-                                            <button type="submit" class="btn btn-sm btn-outline-secondary">
-                                                {% if repo.enabled %}
-                                                    <i class="bi bi-toggle-on"></i>
-                                                {% else %}
-                                                    <i class="bi bi-toggle-off"></i>
-                                                {% endif %}
-                                            </button>
-                                        </form>
-                                    </div>
-                                    
-                                    <!-- Delete Confirmation Modal -->
-                                    <div class="modal fade" id="deleteModal{{ repo.id }}" tabindex="-1" aria-hidden="true">
-                                        <div class="modal-dialog">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title">Confirm Delete</h5>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                </div>
-                                                <div class="modal-body">
-                                                    <p>Are you sure you want to delete the repository <strong>{{ repo.name }}</strong>?</p>
-                                                    <p class="text-danger">This action cannot be undone.</p>
-                                                </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                    <form method="post" action="{{ url_for('delete_repository', repo_id=repo.id) }}">
-                                                        <button type="submit" class="btn btn-danger">Delete</button>
-                                                    </form>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Packages Modal -->
-                                    <div class="modal fade" id="packagesModal{{ repo.id }}" tabindex="-1" aria-hidden="true">
-                                        <div class="modal-dialog">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title">Packages in {{ repo.name }}</h5>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                </div>
-                                                <div class="modal-body">
-                                                    {% if repo.packages %}
-                                                        <ul class="list-group">
-                                                            {% for package in repo.packages %}
-                                                                <li class="list-group-item">{{ package }}</li>
-                                                            {% endfor %}
-                                                        </ul>
-                                                    {% else %}
-                                                        <p class="text-muted">No packages defined for this repository.</p>
-                                                    {% endif %}
-                                                </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </td>
-                            </tr>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
                         {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        {% else %}
-            <div class="text-center py-5">
-                <i class="bi bi-cloud-slash display-1 text-muted"></i>
-                <p class="mt-3 lead">No repositories have been added yet.</p>
-                <a href="{{ url_for('add_repository') }}" class="btn btn-primary mt-2">
-                    <i class="bi bi-plus-circle me-1"></i> Add a Repository
-                </a>
-            </div>
-        {% endif %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center">No repositories found</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
-<div class="card">
+<div class="card mt-4">
     <div class="card-header">
         <h5 class="card-title mb-0">
             <i class="bi bi-info-circle me-2"></i>
@@ -153,26 +86,69 @@
         </h5>
     </div>
     <div class="card-body">
-        <h5>Adding a Git Repository</h5>
-        <p>
-            You can add custom package feeds from Git repositories to include packages that are not available
-            in the official OpenWrt package feeds.
-        </p>
+        <p>Custom Git repositories can be used to add your own packages to OpenWrt builds. These repositories should have the same structure as the OpenWrt packages repository.</p>
         
-        <h5>Authentication for Private Repositories</h5>
-        <p>
-            For private repositories, you need to provide an authentication token or key:
-        </p>
-        <ul>
-            <li>For GitHub: Create a personal access token with appropriate permissions.</li>
-            <li>For other Git hosts: Follow their authentication documentation.</li>
-        </ul>
+        <h6 class="mt-3">Basic Structure</h6>
+        <pre><code>my-packages/
+├── package1/
+│   ├── Makefile
+│   └── files/
+├── package2/
+│   ├── Makefile
+│   └── ...
+└── ...</code></pre>
         
-        <div class="alert alert-warning">
-            <i class="bi bi-shield-exclamation me-2"></i>
-            <strong>Security Note:</strong> Authentication tokens are stored securely but should be treated with care.
-            Use tokens with minimal permissions needed for read access to the repository.
+        <h6 class="mt-3">Example Makefile</h6>
+        <pre><code>include $(TOPDIR)/rules.mk
+
+PKG_NAME:=my-package
+PKG_VERSION:=1.0.0
+PKG_RELEASE:=1
+
+include $(INCLUDE_DIR)/package.mk
+
+define Package/my-package
+  SECTION:=utils
+  CATEGORY:=Utilities
+  TITLE:=My custom package
+  URL:=https://github.com/example/my-package
+  DEPENDS:=+libpcre
+endef
+
+define Package/my-package/description
+  This is my custom package for OpenWrt.
+endef
+
+define Build/Compile
+	$(MAKE) -C $(PKG_BUILD_DIR) \
+		CC="$(TARGET_CC)" \
+		CFLAGS="$(TARGET_CFLAGS)" \
+		LDFLAGS="$(TARGET_LDFLAGS)"
+endef
+
+define Package/my-package/install
+	$(INSTALL_DIR) $(1)/usr/bin
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/my-package $(1)/usr/bin/
+endef
+
+$(eval $(call BuildPackage,my-package))</code></pre>
+        
+        <div class="alert alert-info mt-3">
+            <i class="bi bi-lightbulb me-2"></i>
+            <strong>Tip:</strong> For private repositories, you can add an authentication token. The token will be securely stored and used when cloning the repository.
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize popovers
+        var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'))
+        var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+            return new bootstrap.Popover(popoverTriggerEl)
+        });
+    });
+</script>
 {% endblock %}

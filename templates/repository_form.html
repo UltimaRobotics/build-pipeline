@@ -1,104 +1,92 @@
 {% extends "layout.html" %}
 
-{% block title %} - {{ 'Edit' if repository else 'Add' }} Repository{% endblock %}
+{% block title %} - {% if repository %}Edit{% else %}Add{% endif %} Repository{% endblock %}
 
 {% block content %}
 <div class="card">
-    <div class="card-header">
+    <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="card-title mb-0">
             <i class="bi bi-git me-2"></i>
-            {{ 'Edit' if repository else 'Add New' }} Repository
+            {% if repository %}Edit{% else %}Add{% endif %} Repository
         </h5>
+        <a href="{{ url_for('repositories') }}" class="btn btn-sm btn-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Back to Repositories
+        </a>
     </div>
     <div class="card-body">
-        <form method="post" action="{{ url_for('edit_repository', repo_id=repository.id) if repository else url_for('add_repository') }}">
+        <form method="POST" action="{{ url_for('edit_repository', repo_id=repository.id) if repository else url_for('add_repository') }}">
             <div class="mb-3">
-                <label for="repoName" class="form-label">Repository Name *</label>
-                <input type="text" class="form-control" id="repoName" name="name" 
-                       value="{{ repository.name if repository else '' }}" required>
-                <div class="form-text">A short, descriptive name for this repository.</div>
+                <label for="name" class="form-label">Repository Name</label>
+                <input type="text" class="form-control" id="name" name="name" value="{{ repository.name if repository else '' }}" required>
+                <div class="form-text">A descriptive name for this repository.</div>
             </div>
             
             <div class="mb-3">
-                <label for="repoUrl" class="form-label">Git URL *</label>
-                <input type="text" class="form-control" id="repoUrl" name="url" 
-                       value="{{ repository.url if repository else '' }}" required
-                       placeholder="https://github.com/username/repo.git">
-                <div class="form-text">The HTTPS URL of the Git repository.</div>
+                <label for="url" class="form-label">Repository URL</label>
+                <input type="text" class="form-control" id="url" name="url" value="{{ repository.url if repository else '' }}" required>
+                <div class="form-text">The Git URL for the repository (HTTPS or SSH).</div>
             </div>
             
             <div class="mb-3">
-                <label for="repoBranch" class="form-label">Branch</label>
-                <input type="text" class="form-control" id="repoBranch" name="branch" 
-                       value="{{ repository.branch if repository else 'main' }}"
-                       placeholder="main">
-                <div class="form-text">The branch to use. Default is 'main'.</div>
+                <label for="branch" class="form-label">Branch</label>
+                <input type="text" class="form-control" id="branch" name="branch" value="{{ repository.branch if repository else 'main' }}">
+                <div class="form-text">The Git branch to use. Defaults to 'main'.</div>
             </div>
             
             <div class="mb-3">
-                <label for="repoToken" class="form-label">Authentication Token</label>
-                <input type="password" class="form-control" id="repoToken" name="auth_token" 
-                       value="{{ repository.auth_token if repository else '' }}"
-                       placeholder="Optional for private repositories">
-                <div class="form-text">Leave empty to keep existing token if editing, or if the repository is public.</div>
+                <label for="auth_token" class="form-label">Authentication Token</label>
+                <input type="password" class="form-control" id="auth_token" name="auth_token" placeholder="{% if repository %}Leave empty to keep current token{% else %}Optional{% endif %}">
+                <div class="form-text">Optional token for private repositories. {% if repository %}Leave empty to keep the current token.{% endif %}</div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="packages" class="form-label">Packages</label>
+                <textarea class="form-control" id="packages" name="packages" rows="3">{{ repository.packages|join(', ') if repository and repository.packages else '' }}</textarea>
+                <div class="form-text">Comma-separated list of packages available in this repository.</div>
             </div>
             
             <div class="mb-3 form-check">
-                <input type="checkbox" class="form-check-input" id="repoEnabled" name="enabled" 
-                       {{ 'checked' if not repository or repository.enabled else '' }}>
-                <label class="form-check-label" for="repoEnabled">Enabled</label>
-                <div class="form-text">Uncheck to temporarily disable this repository.</div>
-            </div>
-            
-            <div class="mb-3">
-                <label for="repoPackages" class="form-label">Packages</label>
-                <textarea class="form-control" id="repoPackages" name="packages" rows="4"
-                          placeholder="Enter package names separated by commas (e.g., package1, package2)">{{ repository.packages|join(', ') if repository and repository.packages else '' }}</textarea>
-                <div class="form-text">List of packages in this repository that should be included in builds.</div>
+                <input type="checkbox" class="form-check-input" id="enabled" name="enabled" {% if repository and repository.enabled %}checked{% elif not repository %}checked{% endif %}>
+                <label class="form-check-label" for="enabled">Enabled</label>
+                <div class="form-text">Disable to temporarily exclude this repository without deleting it.</div>
             </div>
             
             <div class="d-flex justify-content-between">
-                <a href="{{ url_for('repositories') }}" class="btn btn-secondary">Cancel</a>
                 <button type="submit" class="btn btn-primary">
-                    {{ 'Save Changes' if repository else 'Add Repository' }}
+                    <i class="bi bi-save me-1"></i> {% if repository %}Update{% else %}Add{% endif %} Repository
                 </button>
+                
+                {% if repository %}
+                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                    <i class="bi bi-trash me-1"></i> Delete Repository
+                </button>
+                {% endif %}
             </div>
         </form>
     </div>
 </div>
 
-<div class="card mt-4">
-    <div class="card-header">
-        <h5 class="card-title mb-0">
-            <i class="bi bi-info-circle me-2"></i>
-            Repository Information
-        </h5>
-    </div>
-    <div class="card-body">
-        <h5>Repository Types</h5>
-        <p>
-            OpenWrt can use packages from various Git repositories. Common types include:
-        </p>
-        <ul>
-            <li><strong>GitHub repositories</strong>: Typically in the format <code>https://github.com/username/reponame.git</code></li>
-            <li><strong>GitLab repositories</strong>: Typically in the format <code>https://gitlab.com/username/reponame.git</code></li>
-            <li><strong>Custom Git servers</strong>: Follow your Git server's URL format</li>
-        </ul>
-        
-        <h5>Authentication for Private Repositories</h5>
-        <p>
-            If your repository is private, you'll need to provide authentication:
-        </p>
-        <ul>
-            <li>For GitHub: Use a <a href="https://github.com/settings/tokens" target="_blank">personal access token</a> with at least <code>repo</code> scope.</li>
-            <li>For GitLab: Use a <a href="https://gitlab.com/-/profile/personal_access_tokens" target="_blank">personal access token</a> with at least <code>read_repository</code> scope.</li>
-        </ul>
-        
-        <div class="alert alert-warning">
-            <i class="bi bi-shield-exclamation me-2"></i>
-            <strong>Security Note:</strong> Authentication tokens are stored securely but should be treated with care.
-            Use tokens with minimal permissions needed for read access to the repository.
+{% if repository %}
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Confirm Deletion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the repository <strong>{{ repository.name }}</strong>?</p>
+                <p class="text-danger"><strong>This action cannot be undone.</strong></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="{{ url_for('delete_repository', repo_id=repository.id) }}" method="post">
+                    <button type="submit" class="btn btn-danger">Delete Repository</button>
+                </form>
+            </div>
         </div>
     </div>
 </div>
+{% endif %}
 {% endblock %}
