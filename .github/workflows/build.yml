@@ -1,0 +1,175 @@
+name: OpenWrt Build Pipeline
+
+on:
+  push:
+    branches: 
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+    branches: 
+      - main
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version override (leave empty for auto)'
+        required: false
+      target:
+        description: 'Target platform (leave empty for all)'
+        required: false
+      openwrt_version:
+        description: 'OpenWrt version'
+        required: false
+        default: '22.03.3'
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Fetch all history for version calculation
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyyaml semver gitpython
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            CALCULATED_VERSION=$(python scripts/version.py)
+            echo "version=$CALCULATED_VERSION" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Configure build matrix
+        id: set-matrix
+        run: |
+          if [ -n "${{ github.event.inputs.target }}" ]; then
+            # Filter for specific target
+            python -c "
+import yaml, json, os
+with open('config/openwrt.yml', 'r') as f:
+    config = yaml.safe_load(f)
+targets = [t for t in config['targets'] if t['name'] == '${{ github.event.inputs.target }}']
+openwrt_version = '${{ github.event.inputs.openwrt_version }}' or config['default_version']
+matrix = {'include': [{'target': t['name'], 'subtarget': t['subtarget'], 'openwrt_version': openwrt_version} for t in targets]}
+with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+    f.write(f'matrix={json.dumps(matrix)}\\n')
+            "
+          else
+            # All targets from config
+            python -c "
+import yaml, json, os
+with open('config/openwrt.yml', 'r') as f:
+    config = yaml.safe_load(f)
+openwrt_version = '${{ github.event.inputs.openwrt_version }}' or config['default_version']
+matrix = {'include': [{'target': t['name'], 'subtarget': t['subtarget'], 'openwrt_version': openwrt_version} for t in config['targets']]}
+with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+    f.write(f'matrix={json.dumps(matrix)}\\n')
+            "
+          fi
+
+  build:
+    needs: prepare
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{fromJson(needs.prepare.outputs.matrix)}}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up build environment
+        run: |
+          chmod +x scripts/setup_env.sh
+          ./scripts/setup_env.sh
+      
+      - name: Cache OpenWrt source
+        uses: actions/cache@v3
+        with:
+          path: openwrt
+          key: openwrt-${{ matrix.openwrt_version }}-${{ hashFiles('config/**') }}
+          restore-keys: |
+            openwrt-${{ matrix.openwrt_version }}-
+      
+      - name: Cache packages
+        uses: actions/cache@v3
+        with:
+          path: dl
+          key: packages-${{ matrix.openwrt_version }}-${{ hashFiles('config/packages.yml') }}
+          restore-keys: |
+            packages-${{ matrix.openwrt_version }}-
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyyaml gitpython
+
+      - name: Build OpenWrt and custom packages
+        id: build
+        run: |
+          python scripts/build.py \
+            --target ${{ matrix.target }} \
+            --subtarget ${{ matrix.subtarget }} \
+            --openwrt-version ${{ matrix.openwrt_version }} \
+            --version ${{ needs.prepare.outputs.version }}
+        
+      - name: Upload firmware as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: firmware-${{ matrix.target }}-${{ matrix.subtarget }}-${{ needs.prepare.outputs.version }}
+          path: |
+            bin/targets/${{ matrix.target }}/${{ matrix.subtarget }}/*.bin
+            bin/targets/${{ matrix.target }}/${{ matrix.subtarget }}/*.buildinfo
+            bin/targets/${{ matrix.target }}/${{ matrix.subtarget }}/*.manifest
+            bin/targets/${{ matrix.target }}/${{ matrix.subtarget }}/sha256sums
+
+  release:
+    needs: [prepare, build]
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyyaml requests
+          
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: ./artifacts
+          
+      - name: Create Release
+        id: create_release
+        run: |
+          python scripts/release.py \
+            --version ${{ needs.prepare.outputs.version }} \
+            --artifacts-dir ./artifacts

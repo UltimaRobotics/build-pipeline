@@ -1,0 +1,82 @@
+/* Custom styles for OpenWrt Build Pipeline */
+
+/* Body padding for fixed navbar */
+body {
+    padding-bottom: 70px; /* Allow for footer */
+}
+
+/* Status badge colors */
+.badge.bg-success {
+    background-color: var(--bs-success) !important;
+}
+
+.badge.bg-danger {
+    background-color: var(--bs-danger) !important;
+}
+
+.badge.bg-info {
+    background-color: var(--bs-info) !important;
+}
+
+.badge.bg-secondary {
+    background-color: var(--bs-secondary) !important;
+}
+
+/* Footer styling */
+.footer {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    background-color: var(--bs-dark);
+    padding: 15px 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Card hover effects */
+.card {
+    transition: transform 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Table improvements */
+.table-responsive {
+    overflow-x: auto;
+    max-height: 600px;
+}
+
+/* Icon positioning */
+.bi {
+    vertical-align: -0.125em;
+}
+
+/* Sticky navbar */
+.navbar {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+/* Dashboard stat cards */
+.border.rounded {
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    padding: 15px !important;
+    transition: background-color 0.2s;
+}
+
+.border.rounded:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Pagination styling */
+.pagination .page-item.active .page-link {
+    background-color: var(--bs-primary);
+    border-color: var(--bs-primary);
+}
+
+.pagination .page-link {
+    color: var(--bs-primary);
+}

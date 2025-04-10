@@ -1,0 +1,121 @@
+{% extends "layout.html" %}
+
+{% block title %} - Builds{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">
+            <i class="bi bi-building-gear me-2"></i>
+            Build History
+        </h5>
+        <div>
+            <button class="btn btn-sm btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#filterCollapse" aria-expanded="false" aria-controls="filterCollapse">
+                <i class="bi bi-funnel me-1"></i> Filter
+            </button>
+        </div>
+    </div>
+    
+    <div class="collapse" id="filterCollapse">
+        <div class="card-body border-bottom">
+            <form method="get" action="{{ url_for('builds') }}" class="row g-3">
+                <div class="col-md-4">
+                    <label for="status" class="form-label">Status</label>
+                    <select class="form-select" id="status" name="status">
+                        <option value="">All</option>
+                        <option value="success" {% if status == 'success' %}selected{% endif %}>Success</option>
+                        <option value="failed" {% if status == 'failed' %}selected{% endif %}>Failed</option>
+                        <option value="in_progress" {% if status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="target" class="form-label">Target</label>
+                    <select class="form-select" id="target" name="target">
+                        <option value="">All</option>
+                        {% for target in targets %}
+                        <option value="{{ target.name }}" {% if target.name == target %}selected{% endif %}>{{ target.name }}/{{ target.subtarget }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary">Apply Filters</button>
+                    <a href="{{ url_for('builds') }}" class="btn btn-secondary ms-2">Clear</a>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Target</th>
+                        <th>Subtarget</th>
+                        <th>Version</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Updated</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if builds %}
+                        {% for build in builds %}
+                        <tr>
+                            <td><a href="{{ url_for('api_build', build_id=build.id) }}">{{ build.build_id[:8] }}</a></td>
+                            <td>{{ build.target }}</td>
+                            <td>{{ build.subtarget }}</td>
+                            <td>{{ build.version }}</td>
+                            <td>
+                                {% if build.status == 'success' %}
+                                    <span class="badge bg-success">Success</span>
+                                {% elif build.status == 'failed' %}
+                                    <span class="badge bg-danger">Failed</span>
+                                {% elif build.status == 'in_progress' %}
+                                    <span class="badge bg-info">In Progress</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ build.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ build.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>{{ build.updated_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center">No builds found</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+        
+        {% if pagination.pages > 1 %}
+        <nav aria-label="Build pagination">
+            <ul class="pagination justify-content-center">
+                <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('builds', page=pagination.prev_num, status=status, target=target) if pagination.has_prev else '#' }}">Previous</a>
+                </li>
+                
+                {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                    {% if page_num %}
+                        <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                            <a class="page-link" href="{{ url_for('builds', page=page_num, status=status, target=target) }}">{{ page_num }}</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+                
+                <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('builds', page=pagination.next_num, status=status, target=target) if pagination.has_next else '#' }}">Next</a>
+                </li>
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

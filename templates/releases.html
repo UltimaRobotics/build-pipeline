@@ -1,0 +1,108 @@
+{% extends "layout.html" %}
+
+{% block title %} - Releases{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="bi bi-tags-fill me-2"></i>
+            Released Versions
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Version</th>
+                        <th>Release Date</th>
+                        <th>Assets</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if releases %}
+                        {% for release in releases %}
+                        <tr>
+                            <td>{{ release.version }}</td>
+                            <td>{{ release.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>
+                                {% if release.assets %}
+                                    {{ release.assets|length }}
+                                {% else %}
+                                    0
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ release.url }}" class="btn btn-sm btn-primary" target="_blank">
+                                    <i class="bi bi-download me-1"></i> Download
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="4" class="text-center">No releases found</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+        
+        {% if pagination.pages > 1 %}
+        <nav aria-label="Release pagination">
+            <ul class="pagination justify-content-center">
+                <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('releases', page=pagination.prev_num) if pagination.has_prev else '#' }}">Previous</a>
+                </li>
+                
+                {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                    {% if page_num %}
+                        <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                            <a class="page-link" href="{{ url_for('releases', page=page_num) }}">{{ page_num }}</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+                
+                <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('releases', page=pagination.next_num) if pagination.has_next else '#' }}">Next</a>
+                </li>
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="bi bi-info-circle me-2"></i>
+            OpenWrt Release Information
+        </h5>
+    </div>
+    <div class="card-body">
+        <p>
+            OpenWrt releases are built automatically by the CI/CD pipeline. 
+            Each release contains firmware images for various target devices, along with
+            custom packages and configurations.
+        </p>
+        
+        <h5 class="mt-4">Installation Instructions</h5>
+        <ol>
+            <li>Download the appropriate firmware image for your device from the release page.</li>
+            <li>Verify the checksum of the downloaded file using the sha256sums.txt file.</li>
+            <li>Follow the <a href="https://openwrt.org/docs/guide-user/installation/start" target="_blank">OpenWrt installation guide</a> to flash the firmware.</li>
+        </ol>
+        
+        <div class="alert alert-info mt-3">
+            <i class="bi bi-info-circle-fill me-2"></i>
+            Make sure to back up your device configuration before flashing a new firmware image.
+        </div>
+    </div>
+</div>
+{% endblock %}

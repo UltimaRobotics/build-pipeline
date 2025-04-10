@@ -1,0 +1,201 @@
+{% extends "layout.html" %}
+
+{% block title %} - Dashboard{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-info-circle me-2"></i>
+                    OpenWrt Build Pipeline
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="lead">
+                    This is an automated CI/CD pipeline for building OpenWrt firmware 
+                    and custom packages with versioned releases.
+                </p>
+                <p>
+                    The system automatically builds OpenWrt firmware for various targets, 
+                    integrates custom packages, and creates versioned releases.
+                </p>
+                
+                <h5 class="mt-4">Supported Targets</h5>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Target</th>
+                                <th>Subtarget</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if openwrt_config and openwrt_config.targets %}
+                                {% for target in openwrt_config.targets %}
+                                <tr>
+                                    <td>{{ target.name }}</td>
+                                    <td>{{ target.subtarget }}</td>
+                                    <td>{{ target.description }}</td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="3" class="text-center">No targets configured</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-clock-history me-2"></i>
+                    Recent Builds
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Target</th>
+                                <th>Version</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if builds %}
+                                {% for build in builds %}
+                                <tr>
+                                    <td><a href="{{ url_for('api_build', build_id=build.id) }}">{{ build.build_id[:8] }}</a></td>
+                                    <td>{{ build.target }}/{{ build.subtarget }}</td>
+                                    <td>{{ build.version }}</td>
+                                    <td>
+                                        {% if build.status == 'success' %}
+                                            <span class="badge bg-success">Success</span>
+                                        {% elif build.status == 'failed' %}
+                                            <span class="badge bg-danger">Failed</span>
+                                        {% elif build.status == 'in_progress' %}
+                                            <span class="badge bg-info">In Progress</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ build.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ build.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center">No builds found</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="text-end">
+                    <a href="{{ url_for('builds') }}" class="btn btn-primary">View All Builds</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-graph-up me-2"></i>
+                    Build Statistics
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-3">
+                    <div class="text-center p-3 border rounded">
+                        <h3 class="mb-0">{{ build_stats.total }}</h3>
+                        <small class="text-muted">Total Builds</small>
+                    </div>
+                    <div class="text-center p-3 border rounded text-success">
+                        <h3 class="mb-0">{{ build_stats.success }}</h3>
+                        <small class="text-muted">Successful</small>
+                    </div>
+                    <div class="text-center p-3 border rounded text-danger">
+                        <h3 class="mb-0">{{ build_stats.failed }}</h3>
+                        <small class="text-muted">Failed</small>
+                    </div>
+                </div>
+                <canvas id="buildChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-tag-fill me-2"></i>
+                    Latest Release
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if latest_release %}
+                    <h4>{{ latest_release.version }}</h4>
+                    <p class="text-muted">Released on {{ latest_release.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                    <a href="{{ latest_release.url }}" class="btn btn-primary" target="_blank">
+                        <i class="bi bi-download me-1"></i> View Release
+                    </a>
+                {% else %}
+                    <p class="text-center">No releases found</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-gear-fill me-2"></i>
+                    Quick Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="list-group">
+                    <a href="https://github.com/openwrt/openwrt" class="list-group-item list-group-item-action" target="_blank">
+                        <i class="bi bi-github me-2"></i> OpenWrt Repository
+                    </a>
+                    <a href="https://openwrt.org/docs/start" class="list-group-item list-group-item-action" target="_blank">
+                        <i class="bi bi-book me-2"></i> OpenWrt Documentation
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var ctx = document.getElementById('buildChart').getContext('2d');
+        var buildChart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: ['Success', 'Failed', 'In Progress'],
+                datasets: [{
+                    data: [{{ build_stats.success }}, {{ build_stats.failed }}, {{ build_stats.in_progress }}],
+                    backgroundColor: ['#28a745', '#dc3545', '#17a2b8'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,33 @@
+# OpenWrt build configuration
+default_version: "22.03.3"  # Default OpenWrt version
+
+# List of targets to build
+targets:
+  - name: "x86"
+    subtarget: "64"
+    description: "Generic x86_64 devices"
+    
+  - name: "bcm27xx"
+    subtarget: "bcm2711"
+    description: "Raspberry Pi 4 Model B"
+    
+  - name: "ramips"
+    subtarget: "mt7621"
+    description: "MT7621 based devices"
+
+# Build settings
+build:
+  jobs: 4  # Number of parallel jobs for make
+  kernel_config: # Custom kernel config options
+    - "CONFIG_PACKAGE_kmod-usb-storage=y"
+    - "CONFIG_PACKAGE_kmod-fs-ext4=y"
+    - "CONFIG_PACKAGE_kmod-usb3=y"
+  
+  # Base packages to include in all builds
+  base_packages:
+    - "luci"
+    - "luci-ssl"
+    - "luci-app-opkg"
+    - "luci-app-firewall"
+    - "luci-app-statistics"
+    - "openssh-sftp-server"

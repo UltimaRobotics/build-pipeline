@@ -1,0 +1,42 @@
+# Custom packages configuration
+
+# Git repositories with custom packages
+repositories:
+  - name: "example-packages"
+    url: "https://github.com/example/openwrt-packages.git"
+    branch: "main"
+    packages:
+      - "example-package-1"
+      - "example-package-2"
+  
+  - name: "community-packages"
+    url: "https://github.com/community/openwrt-packages.git"
+    branch: "master"
+    packages:
+      - "community-app"
+
+# Packages to include in builds
+include_packages:
+  all:  # Packages to include in all builds
+    - "curl"
+    - "wget"
+    - "htop"
+    - "nano"
+    
+  x86_64:  # Packages specific to x86_64 builds
+    - "qemu-ga"
+    - "kmod-vmxnet3"
+    
+  bcm27xx_bcm2711:  # Packages specific to Raspberry Pi 4
+    - "kmod-usb-net"
+    - "kmod-usb-net-rtl8152"
+    
+  ramips_mt7621:  # Packages specific to MT7621 devices
+    - "iwinfo"
+    - "kmod-mt7615e"
+
+# Packages to exclude from builds
+exclude_packages:
+  all:  # Packages to exclude from all builds
+    - "ppp"
+    - "ppp-mod-pppoe"
