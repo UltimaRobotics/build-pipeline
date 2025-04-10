@@ -35,6 +35,11 @@
                             <i class="bi bi-tags-fill me-1"></i> Releases
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.path == '/config' %}active{% endif %}" href="{{ url_for('config') }}">
+                            <i class="bi bi-gear-fill me-1"></i> Configure
+                        </a>
+                    </li>
                 </ul>
             </div>
         </div>

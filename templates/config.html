@@ -1,0 +1,538 @@
+{% extends "layout.html" %}
+
+{% block title %} - Configuration{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-gear-fill me-2"></i>
+                    Build Configuration
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="buildConfigForm" method="post" action="{{ url_for('save_config') }}">
+                    <!-- Target, Subtarget and Profile Selection -->
+                    <div class="mb-4">
+                        <h5>Target Selection</h5>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label for="target" class="form-label">Target</label>
+                                <select class="form-select" id="target" name="target" required>
+                                    <option value="" selected disabled>Select a target...</option>
+                                    {% for target in targets %}
+                                        <option value="{{ target.name }}">{{ target.name }} - {{ target.description }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="subtarget" class="form-label">Subtarget</label>
+                                <select class="form-select" id="subtarget" name="subtarget" disabled required>
+                                    <option value="" selected disabled>Select a target first...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="profile" class="form-label">Profile</label>
+                                <select class="form-select" id="profile" name="profile" disabled required>
+                                    <option value="" selected disabled>Select a subtarget first...</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Version Selection -->
+                    <div class="mb-4">
+                        <h5>OpenWrt Version</h5>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="openwrtVersion" class="form-label">Version</label>
+                                <select class="form-select" id="openwrtVersion" name="openwrt_version" required>
+                                    <option value="23.05.0">23.05.0 (Latest Stable)</option>
+                                    <option value="22.03.5">22.03.5 (Old Stable)</option>
+                                    <option value="21.02.7">21.02.7 (Legacy)</option>
+                                    <option value="snapshot">Snapshot (Development)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="buildVersion" class="form-label">Build Version</label>
+                                <input type="text" class="form-control" id="buildVersion" name="build_version" 
+                                    placeholder="e.g., 1.0.0" required>
+                                <div class="form-text">Custom version for this build</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Package Selection -->
+                    <div class="mb-4">
+                        <h5>Package Selection</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span>Available Packages</span>
+                                            <div class="input-group input-group-sm" style="width: 60%;">
+                                                <input type="text" class="form-control" id="packageSearch" placeholder="Search packages...">
+                                                <button class="btn btn-outline-secondary" type="button" id="refreshPackages">
+                                                    <i class="bi bi-arrow-repeat"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="list-group" id="availablePackages" style="height: 300px; overflow-y: auto;">
+                                            <div class="text-center py-3">
+                                                <div class="spinner-border text-primary" role="status">
+                                                    <span class="visually-hidden">Loading...</span>
+                                                </div>
+                                                <p class="mt-2">Loading available packages...</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <span>Selected Packages</span>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="list-group" id="selectedPackages" style="height: 300px; overflow-y: auto;">
+                                            <div class="text-center py-5">
+                                                <i class="bi bi-box-seam display-4 text-muted"></i>
+                                                <p class="mt-3">No packages selected</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Custom Repositories -->
+                    <div class="mb-4">
+                        <h5>Custom Repositories</h5>
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle-fill me-2"></i>
+                            Add custom package repositories from GitHub or other Git sources. Private repositories require an authentication token.
+                        </div>
+                        
+                        <div id="repoContainer">
+                            <!-- Initial repository input row -->
+                            <div class="repo-row mb-3">
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <input type="text" class="form-control" name="repo_name[]" placeholder="Repository name">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <input type="text" class="form-control" name="repo_url[]" placeholder="Git URL (e.g., https://github.com/user/repo.git)">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button type="button" class="btn btn-outline-danger remove-repo-btn">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="row g-3 mt-2">
+                                    <div class="col-md-4">
+                                        <input type="text" class="form-control" name="repo_branch[]" placeholder="Branch (e.g., main)">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <input type="password" class="form-control" name="repo_token[]" placeholder="Auth token (optional for private repos)">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="form-check form-switch mt-2">
+                                            <input class="form-check-input" type="checkbox" name="repo_enabled[]" checked>
+                                            <label class="form-check-label">Enabled</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row mt-2">
+                                    <div class="col-12">
+                                        <textarea class="form-control" name="repo_packages[]" rows="2" placeholder="Enter package names separated by commas (e.g., package1, package2)"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button type="button" class="btn btn-outline-primary" id="addRepoBtn">
+                            <i class="bi bi-plus-circle me-1"></i> Add Repository
+                        </button>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button type="button" class="btn btn-secondary me-md-2" id="resetFormBtn">Reset</button>
+                        <button type="submit" class="btn btn-primary">Save Configuration</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Target, Subtarget, Profile Selection Logic
+    const targetSelect = document.getElementById('target');
+    const subtargetSelect = document.getElementById('subtarget');
+    const profileSelect = document.getElementById('profile');
+    
+    // Sample subtarget and profile data (will be replaced with API data)
+    const targetData = {
+        {% for target in targets %}
+        "{{ target.name }}": {
+            "subtargets": [
+                {% for subtarget in target.subtargets|default([]) %}
+                {
+                    "name": "{{ subtarget.name }}",
+                    "description": "{{ subtarget.description }}"
+                },
+                {% endfor %}
+                { "name": "{{target.subtarget}}", "description": "Default subtarget" }
+            ],
+            "profiles": {
+                {% for subtarget in target.subtargets|default([]) %}
+                "{{ subtarget.name }}": [
+                    {% for profile in subtarget.profiles|default([]) %}
+                    {
+                        "name": "{{ profile.name }}",
+                        "description": "{{ profile.description }}"
+                    },
+                    {% endfor %}
+                    { "name": "generic", "description": "Generic profile" }
+                ],
+                {% endfor %}
+                "{{target.subtarget}}": [
+                    { "name": "generic", "description": "Generic profile" },
+                    { "name": "device1", "description": "Example Device 1" },
+                    { "name": "device2", "description": "Example Device 2" }
+                ]
+            }
+        },
+        {% endfor %}
+    };
+    
+    // Target selection change event
+    targetSelect.addEventListener('change', function() {
+        const selectedTarget = this.value;
+        subtargetSelect.disabled = false;
+        subtargetSelect.innerHTML = '<option value="" selected disabled>Select a subtarget...</option>';
+        profileSelect.innerHTML = '<option value="" selected disabled>Select a subtarget first...</option>';
+        profileSelect.disabled = true;
+        
+        if (selectedTarget && targetData[selectedTarget]) {
+            const subtargets = targetData[selectedTarget].subtargets || [];
+            subtargets.forEach(function(subtarget) {
+                const option = document.createElement('option');
+                option.value = subtarget.name;
+                option.textContent = subtarget.name + (subtarget.description ? ' - ' + subtarget.description : '');
+                subtargetSelect.appendChild(option);
+            });
+        }
+    });
+    
+    // Subtarget selection change event
+    subtargetSelect.addEventListener('change', function() {
+        const selectedTarget = targetSelect.value;
+        const selectedSubtarget = this.value;
+        profileSelect.disabled = false;
+        profileSelect.innerHTML = '<option value="" selected disabled>Select a profile...</option>';
+        
+        if (selectedTarget && selectedSubtarget && 
+            targetData[selectedTarget] && 
+            targetData[selectedTarget].profiles &&
+            targetData[selectedTarget].profiles[selectedSubtarget]) {
+            
+            const profiles = targetData[selectedTarget].profiles[selectedSubtarget] || [];
+            profiles.forEach(function(profile) {
+                const option = document.createElement('option');
+                option.value = profile.name;
+                option.textContent = profile.name + (profile.description ? ' - ' + profile.description : '');
+                profileSelect.appendChild(option);
+            });
+        }
+    });
+    
+    // Package selection functionality
+    const packageSearch = document.getElementById('packageSearch');
+    const availablePackages = document.getElementById('availablePackages');
+    const selectedPackages = document.getElementById('selectedPackages');
+    const refreshPackagesBtn = document.getElementById('refreshPackages');
+    
+    // Mock data for available packages (will be replaced with API data)
+    const mockPackages = [
+        { name: 'luci', description: 'OpenWrt Web UI' },
+        { name: 'curl', description: 'URL retrieval utility' },
+        { name: 'wget', description: 'Network utility to retrieve files' },
+        { name: 'nano', description: 'Small editor for config files' },
+        { name: 'htop', description: 'Interactive process viewer' },
+        { name: 'iperf3', description: 'Network bandwidth measuring tool' },
+        { name: 'vim', description: 'VI improved text editor' },
+        { name: 'tmux', description: 'Terminal multiplexer' },
+        { name: 'kmod-usb-net', description: 'USB net support' },
+        { name: 'luci-app-firewall', description: 'Firewall configuration UI' },
+        { name: 'wireguard', description: 'VPN protocol' },
+        { name: 'openvpn', description: 'OpenVPN client/server' }
+    ];
+    
+    // Function to load available packages
+    function loadAvailablePackages(packages) {
+        availablePackages.innerHTML = '';
+        
+        if (packages.length === 0) {
+            availablePackages.innerHTML = `
+                <div class="text-center py-5">
+                    <i class="bi bi-search display-4 text-muted"></i>
+                    <p class="mt-3">No packages found</p>
+                </div>
+            `;
+            return;
+        }
+        
+        packages.forEach(function(pkg) {
+            const packageItem = document.createElement('a');
+            packageItem.href = '#';
+            packageItem.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
+            packageItem.dataset.package = pkg.name;
+            packageItem.innerHTML = `
+                <div>
+                    <strong>${pkg.name}</strong>
+                    <p class="mb-0 small text-muted">${pkg.description}</p>
+                </div>
+                <button class="btn btn-sm btn-outline-primary add-package-btn">
+                    <i class="bi bi-plus"></i>
+                </button>
+            `;
+            
+            packageItem.querySelector('.add-package-btn').addEventListener('click', function(e) {
+                e.preventDefault();
+                addPackage(pkg);
+            });
+            
+            availablePackages.appendChild(packageItem);
+        });
+    }
+    
+    // Function to add a package to selected packages
+    function addPackage(pkg) {
+        // Check if already added
+        if (document.querySelector(`#selectedPackages [data-package="${pkg.name}"]`)) {
+            return;
+        }
+        
+        // Remove empty state if present
+        const emptyState = selectedPackages.querySelector('.text-center');
+        if (emptyState) {
+            selectedPackages.innerHTML = '';
+        }
+        
+        const packageItem = document.createElement('div');
+        packageItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+        packageItem.dataset.package = pkg.name;
+        packageItem.innerHTML = `
+            <div>
+                <strong>${pkg.name}</strong>
+                <p class="mb-0 small text-muted">${pkg.description}</p>
+            </div>
+            <input type="hidden" name="selected_packages[]" value="${pkg.name}">
+            <button class="btn btn-sm btn-outline-danger remove-package-btn">
+                <i class="bi bi-trash"></i>
+            </button>
+        `;
+        
+        packageItem.querySelector('.remove-package-btn').addEventListener('click', function() {
+            packageItem.remove();
+            
+            // Show empty state if no packages left
+            if (selectedPackages.children.length === 0) {
+                selectedPackages.innerHTML = `
+                    <div class="text-center py-5">
+                        <i class="bi bi-box-seam display-4 text-muted"></i>
+                        <p class="mt-3">No packages selected</p>
+                    </div>
+                `;
+            }
+        });
+        
+        selectedPackages.appendChild(packageItem);
+    }
+    
+    // Initial package load
+    setTimeout(() => {
+        loadAvailablePackages(mockPackages);
+    }, 1000);
+    
+    // Package search functionality
+    packageSearch.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        const filteredPackages = mockPackages.filter(pkg => 
+            pkg.name.toLowerCase().includes(searchTerm) || 
+            pkg.description.toLowerCase().includes(searchTerm)
+        );
+        loadAvailablePackages(filteredPackages);
+    });
+    
+    // Refresh packages button
+    refreshPackagesBtn.addEventListener('click', function() {
+        availablePackages.innerHTML = `
+            <div class="text-center py-3">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Loading available packages...</p>
+            </div>
+        `;
+        
+        // Simulate API call delay
+        setTimeout(() => {
+            loadAvailablePackages(mockPackages);
+        }, 1000);
+    });
+    
+    // Custom repositories functionality
+    const repoContainer = document.getElementById('repoContainer');
+    const addRepoBtn = document.getElementById('addRepoBtn');
+    
+    // Add repository button
+    addRepoBtn.addEventListener('click', function() {
+        const repoRow = document.createElement('div');
+        repoRow.className = 'repo-row mb-3 pt-3 border-top';
+        repoRow.innerHTML = `
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <input type="text" class="form-control" name="repo_name[]" placeholder="Repository name">
+                </div>
+                <div class="col-md-6">
+                    <input type="text" class="form-control" name="repo_url[]" placeholder="Git URL (e.g., https://github.com/user/repo.git)">
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-outline-danger remove-repo-btn">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="row g-3 mt-2">
+                <div class="col-md-4">
+                    <input type="text" class="form-control" name="repo_branch[]" placeholder="Branch (e.g., main)">
+                </div>
+                <div class="col-md-6">
+                    <input type="password" class="form-control" name="repo_token[]" placeholder="Auth token (optional for private repos)">
+                </div>
+                <div class="col-md-2">
+                    <div class="form-check form-switch mt-2">
+                        <input class="form-check-input" type="checkbox" name="repo_enabled[]" checked>
+                        <label class="form-check-label">Enabled</label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mt-2">
+                <div class="col-12">
+                    <textarea class="form-control" name="repo_packages[]" rows="2" placeholder="Enter package names separated by commas (e.g., package1, package2)"></textarea>
+                </div>
+            </div>
+        `;
+        
+        repoContainer.appendChild(repoRow);
+        
+        // Add event listener to the new remove button
+        repoRow.querySelector('.remove-repo-btn').addEventListener('click', function() {
+            repoRow.remove();
+        });
+    });
+    
+    // Remove repository button (for initial row)
+    document.querySelectorAll('.remove-repo-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            if (document.querySelectorAll('.repo-row').length > 1) {
+                this.closest('.repo-row').remove();
+            } else {
+                // Don't remove the last row, just clear its values
+                const row = this.closest('.repo-row');
+                row.querySelectorAll('input, textarea').forEach(input => {
+                    input.value = '';
+                });
+                row.querySelector('input[type="checkbox"]').checked = true;
+            }
+        });
+    });
+    
+    // Reset form button
+    document.getElementById('resetFormBtn').addEventListener('click', function() {
+        if (confirm('Are you sure you want to reset the form? All unsaved changes will be lost.')) {
+            document.getElementById('buildConfigForm').reset();
+            selectedPackages.innerHTML = `
+                <div class="text-center py-5">
+                    <i class="bi bi-box-seam display-4 text-muted"></i>
+                    <p class="mt-3">No packages selected</p>
+                </div>
+            `;
+            subtargetSelect.disabled = true;
+            subtargetSelect.innerHTML = '<option value="" selected disabled>Select a target first...</option>';
+            profileSelect.disabled = true;
+            profileSelect.innerHTML = '<option value="" selected disabled>Select a subtarget first...</option>';
+            
+            // Reset repositories to initial state
+            repoContainer.innerHTML = '';
+            const repoRow = document.createElement('div');
+            repoRow.className = 'repo-row mb-3';
+            repoRow.innerHTML = `
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" name="repo_name[]" placeholder="Repository name">
+                    </div>
+                    <div class="col-md-6">
+                        <input type="text" class="form-control" name="repo_url[]" placeholder="Git URL (e.g., https://github.com/user/repo.git)">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="button" class="btn btn-outline-danger remove-repo-btn">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="row g-3 mt-2">
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" name="repo_branch[]" placeholder="Branch (e.g., main)">
+                    </div>
+                    <div class="col-md-6">
+                        <input type="password" class="form-control" name="repo_token[]" placeholder="Auth token (optional for private repos)">
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-check form-switch mt-2">
+                            <input class="form-check-input" type="checkbox" name="repo_enabled[]" checked>
+                            <label class="form-check-label">Enabled</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-2">
+                    <div class="col-12">
+                        <textarea class="form-control" name="repo_packages[]" rows="2" placeholder="Enter package names separated by commas (e.g., package1, package2)"></textarea>
+                    </div>
+                </div>
+            `;
+            repoContainer.appendChild(repoRow);
+            
+            // Add event listener to the new remove button
+            repoRow.querySelector('.remove-repo-btn').addEventListener('click', function() {
+                // Don't remove the last row, just clear its values
+                const inputs = repoRow.querySelectorAll('input, textarea');
+                inputs.forEach(input => {
+                    input.value = '';
+                });
+                repoRow.querySelector('input[type="checkbox"]').checked = true;
+            });
+        }
+    });
+});
+</script>
+{% endblock %}

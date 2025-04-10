@@ -6,14 +6,64 @@ targets:
   - name: "x86"
     subtarget: "64"
     description: "Generic x86_64 devices"
+    subtargets:
+      - name: "64"
+        description: "64-bit (x86_64)"
+        profiles:
+          - name: "generic"
+            description: "Generic x86_64"
+          - name: "kvm_guest"
+            description: "KVM Guest"
+          - name: "proxmox"
+            description: "Proxmox VE"
+      - name: "generic"
+        description: "Generic 32-bit (i386)"
+        profiles:
+          - name: "generic"
+            description: "Generic i386"
+          - name: "legacy"
+            description: "Legacy i386"
     
   - name: "bcm27xx"
     subtarget: "bcm2711"
     description: "Raspberry Pi 4 Model B"
+    subtargets:
+      - name: "bcm2711"
+        description: "BCM2711 boards (Raspberry Pi 4)"
+        profiles:
+          - name: "rpi-4"
+            description: "Raspberry Pi 4 Model B"
+      - name: "bcm2710"
+        description: "BCM2710 boards (Raspberry Pi 3)"
+        profiles:
+          - name: "rpi-3"
+            description: "Raspberry Pi 3 Model B/B+"
+      - name: "bcm2709"
+        description: "BCM2709 boards (Raspberry Pi 2)"
+        profiles:
+          - name: "rpi-2"
+            description: "Raspberry Pi 2 Model B"
     
   - name: "ramips"
     subtarget: "mt7621"
     description: "MT7621 based devices"
+    subtargets:
+      - name: "mt7621"
+        description: "MT7621 based devices"
+        profiles:
+          - name: "xiaomi_mi-router-3g"
+            description: "Xiaomi Mi Router 3G"
+          - name: "xiaomi_redmi-router-ac2100"
+            description: "Xiaomi Redmi Router AC2100"
+          - name: "asus_rt-ac57u"
+            description: "ASUS RT-AC57U"
+      - name: "mt7620"
+        description: "MT7620 based devices"
+        profiles:
+          - name: "xiaomi_miwifi-mini"
+            description: "Xiaomi MiWiFi Mini"
+          - name: "asus_rt-n14u"
+            description: "ASUS RT-N14U"
 
 # Build settings
 build:

@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import subprocess
@@ -148,6 +149,128 @@ def api_build(build_id):
     """API endpoint to get build details"""
     build = models.Build.query.get_or_404(build_id)
     return jsonify(build.to_dict())
+
+@app.route('/config')
+def config():
+    """Configuration page for build settings"""
+    openwrt_config = load_openwrt_config()
+    packages_config = load_packages_config()
+    
+    # Get all targets from the config
+    targets = openwrt_config.get('targets', [])
+    
+    return render_template(
+        'config.html',
+        targets=targets,
+        packages_config=packages_config,
+        now=datetime.now()
+    )
+
+@app.route('/save_config', methods=['POST'])
+def save_config():
+    """Save build configuration"""
+    try:
+        # Get basic build info
+        target = request.form.get('target')
+        subtarget = request.form.get('subtarget')
+        profile = request.form.get('profile')
+        openwrt_version = request.form.get('openwrt_version')
+        build_version = request.form.get('build_version')
+        
+        # Get selected packages
+        selected_packages = request.form.getlist('selected_packages[]')
+        
+        # Get repository info
+        repo_names = request.form.getlist('repo_name[]')
+        repo_urls = request.form.getlist('repo_url[]')
+        repo_branches = request.form.getlist('repo_branch[]')
+        repo_tokens = request.form.getlist('repo_token[]')
+        repo_enabled = request.form.getlist('repo_enabled[]')
+        repo_packages = request.form.getlist('repo_packages[]')
+        
+        # Create repositories list
+        repositories = []
+        for i in range(len(repo_names)):
+            if repo_names[i] and repo_urls[i]:  # Only add if name and URL are provided
+                repo_packages_list = [pkg.strip() for pkg in repo_packages[i].split(',') if pkg.strip()]
+                repositories.append({
+                    'name': repo_names[i],
+                    'url': repo_urls[i],
+                    'branch': repo_branches[i] or 'main',
+                    'auth_token': repo_tokens[i],
+                    'enabled': i < len(repo_enabled),  # Check if enabled checkbox is checked
+                    'packages': repo_packages_list
+                })
+        
+        # Create config dictionary
+        config = {
+            'target': target,
+            'subtarget': subtarget,
+            'profile': profile,
+            'openwrt_version': openwrt_version,
+            'build_version': build_version,
+            'packages': selected_packages,
+            'repositories': repositories,
+            'created_at': datetime.now().isoformat()
+        }
+        
+        # Save to a JSON file
+        config_path = os.path.join('instance', 'build_config.json')
+        os.makedirs(os.path.dirname(config_path), exist_ok=True)
+        
+        with open(config_path, 'w') as f:
+            json.dump(config, f, indent=2)
+        
+        # Create a new build entry
+        build_id = f"{target}_{subtarget}_{int(datetime.now().timestamp())}"
+        build = models.Build(
+            build_id=build_id,
+            target=target,
+            subtarget=subtarget,
+            version=build_version,
+            status='pending',
+            logs='Build configuration created'
+        )
+        db.session.add(build)
+        db.session.commit()
+        
+        flash('Build configuration saved successfully. Build has been queued.', 'success')
+        return redirect(url_for('builds'))
+    
+    except Exception as e:
+        logger.error(f"Error saving configuration: {e}")
+        flash(f"Error saving configuration: {str(e)}", 'danger')
+        return redirect(url_for('config'))
+
+@app.route('/api/targets', methods=['GET'])
+def api_targets():
+    """API endpoint to get available targets"""
+    openwrt_config = load_openwrt_config()
+    return jsonify(openwrt_config.get('targets', []))
+
+@app.route('/api/packages', methods=['GET'])
+def api_packages():
+    """API endpoint to get available packages for a target/subtarget"""
+    target = request.args.get('target')
+    subtarget = request.args.get('subtarget')
+    
+    # Mock data for now - in a real implementation, this would fetch packages from OpenWrt
+    packages = [
+        {'name': 'luci', 'description': 'OpenWrt Web UI'},
+        {'name': 'curl', 'description': 'URL retrieval utility'},
+        {'name': 'wget', 'description': 'Network utility to retrieve files'},
+        {'name': 'nano', 'description': 'Small editor for config files'},
+        {'name': 'htop', 'description': 'Interactive process viewer'},
+        {'name': 'iperf3', 'description': 'Network bandwidth measuring tool'},
+        {'name': 'vim', 'description': 'VI improved text editor'},
+        {'name': 'tmux', 'description': 'Terminal multiplexer'},
+        {'name': 'kmod-usb-net', 'description': 'USB net support'},
+        {'name': 'luci-app-firewall', 'description': 'Firewall configuration UI'},
+        {'name': 'wireguard', 'description': 'VPN protocol'},
+        {'name': 'openvpn', 'description': 'OpenVPN client/server'}
+    ]
+    
+    return jsonify(packages)
 
 @app.route('/api/webhook', methods=['POST'])
 def api_webhook():
