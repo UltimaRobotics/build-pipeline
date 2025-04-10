@@ -1,0 +1,245 @@
+{% extends "layout.html" %}
+
+{% block title %} - Build Details{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-building-gear me-2"></i>
+                    Build Details
+                </h5>
+                <div>
+                    <a href="{{ url_for('builds') }}" class="btn btn-sm btn-secondary">
+                        <i class="bi bi-arrow-left me-1"></i> Back to Builds
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Basic Information</h6>
+                        <table class="table">
+                            <tr>
+                                <th class="w-50">Build ID</th>
+                                <td>{{ build.build_id }}</td>
+                            </tr>
+                            <tr>
+                                <th>Status</th>
+                                <td>
+                                    {% if build.status == 'success' %}
+                                        <span class="badge bg-success">Success</span>
+                                    {% elif build.status == 'failed' %}
+                                        <span class="badge bg-danger">Failed</span>
+                                    {% elif build.status == 'in_progress' %}
+                                        <span class="badge bg-info">In Progress</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ build.status }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Target</th>
+                                <td>{{ build.target }}/{{ build.subtarget }}</td>
+                            </tr>
+                            <tr>
+                                <th>Profile</th>
+                                <td>{{ build.profile or 'Generic' }}</td>
+                            </tr>
+                            <tr>
+                                <th>Version</th>
+                                <td>{{ build.version }}</td>
+                            </tr>
+                            <tr>
+                                <th>OpenWrt Version</th>
+                                <td>{{ build.openwrt_version or 'Unknown' }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Timeline</h6>
+                        <table class="table">
+                            <tr>
+                                <th class="w-50">Created</th>
+                                <td>{{ build.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                            </tr>
+                            <tr>
+                                <th>Last Updated</th>
+                                <td>{{ build.updated_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                            </tr>
+                            <tr>
+                                <th>Duration</th>
+                                <td>
+                                    {% if build.status == 'success' %}
+                                        {{ (build.updated_at - build.created_at).total_seconds()|int // 60 }} minutes
+                                    {% elif build.status == 'in_progress' %}
+                                        Running for {{ ((now - build.created_at).total_seconds() / 60)|int }} minutes
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </table>
+                        
+                        <h6 class="text-muted mt-4">Actions</h6>
+                        <div class="btn-group">
+                            <a href="#" class="btn btn-outline-primary" disabled>
+                                <i class="bi bi-download me-1"></i> Download
+                            </a>
+                            <button type="button" class="btn btn-outline-secondary" disabled>
+                                <i class="bi bi-clock-history me-1"></i> Rebuild
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        {% if build.packages %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-box-seam me-2"></i>
+                    Packages ({{ build.packages|length }})
+                </h5>
+            </div>
+            <div class="card-body">
+                <div style="max-height: 300px; overflow-y: auto;">
+                    <div class="row">
+                        {% for package in build.packages %}
+                            <div class="col-lg-4 col-md-6 mb-2">
+                                <div class="badge bg-light text-dark p-2 d-inline-block">
+                                    {{ package }}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if build.logs %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-file-text me-2"></i>
+                    Build Logs
+                </h5>
+            </div>
+            <div class="card-body">
+                <pre class="bg-dark text-light p-3 rounded" style="max-height: 500px; overflow-y: auto;">{{ build.logs }}</pre>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="col-lg-4">
+        {% if build.config and build.config.repositories %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-git me-2"></i>
+                    Custom Repositories
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="list-group">
+                    {% for repo in build.config.repositories %}
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">{{ repo.name }}</h6>
+                            {% if repo.enabled %}
+                                <span class="badge bg-success">Enabled</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Disabled</span>
+                            {% endif %}
+                        </div>
+                        <p class="mb-1">
+                            <small class="text-muted">{{ repo.url }}</small>
+                        </p>
+                        <small>
+                            Branch: <code>{{ repo.branch }}</code>
+                        </small>
+                        
+                        {% if repo.packages %}
+                        <div class="mt-2">
+                            <small class="text-muted">Packages:</small>
+                            <div>
+                                {% for package in repo.packages %}
+                                <span class="badge bg-light text-dark">{{ package }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if build.releases %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-tags-fill me-2"></i>
+                    Associated Releases
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="list-group">
+                    {% for release in build.releases %}
+                    <a href="{{ release.url }}" class="list-group-item list-group-item-action" target="_blank">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">{{ release.version }}</h6>
+                            <small>{{ release.created_at.strftime('%Y-%m-%d') }}</small>
+                        </div>
+                        <small>
+                            {{ release.assets|length if release.assets else 0 }} assets
+                        </small>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Build Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="card-text">
+                    This build was created using the OpenWrt Build Pipeline.
+                    {% if build.status == 'success' %}
+                    The build completed successfully and the firmware images are ready for download.
+                    {% elif build.status == 'in_progress' %}
+                    The build is currently in progress. Check back later for the results.
+                    {% elif build.status == 'failed' %}
+                    The build failed. Check the logs for more information.
+                    {% else %}
+                    The build is currently in the {{ build.status }} state.
+                    {% endif %}
+                </p>
+                
+                {% if build.status == 'failed' %}
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    This build failed. You may want to check the logs for errors and create a new build with corrected parameters.
+                </div>
+                {% endif %}
+                
+                <a href="{{ url_for('config') }}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-2"></i> Create New Build
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

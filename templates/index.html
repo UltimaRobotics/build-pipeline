@@ -80,7 +80,7 @@
                             {% if builds %}
                                 {% for build in builds %}
                                 <tr>
-                                    <td><a href="{{ url_for('api_build', build_id=build.id) }}">{{ build.build_id[:8] }}</a></td>
+                                    <td><a href="{{ url_for('build_detail', build_id=build.id) }}">{{ build.build_id[:8] }}</a></td>
                                     <td>{{ build.target }}/{{ build.subtarget }}</td>
                                     <td>{{ build.version }}</td>
                                     <td>
