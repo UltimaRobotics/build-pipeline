@@ -8,22 +8,44 @@ echo " OpenWrt Build Pipeline - Installation and Setup Script "
 echo "========================================================"
 
 # Check for required utilities
-for cmd in python3 pip git; do
+for cmd in python3 git; do
     if ! command -v $cmd &> /dev/null; then
         echo "Error: $cmd not found. Please install it and try again."
         exit 1
     fi
 done
 
+# Check if python3-venv is installed
+if ! python3 -m venv --help &> /dev/null; then
+    echo "Error: python3-venv is not installed."
+    echo "Please install it using: sudo apt install python3-venv"
+    exit 1
+fi
+
 # Create virtual environment if it doesn't exist
 if [ ! -d "venv" ]; then
     echo "Creating virtual environment..."
     python3 -m venv venv
+    
+    if [ ! -f "venv/bin/activate" ]; then
+        echo "Error: Failed to create virtual environment. Please make sure python3-venv is installed."
+        echo "You can install it with: sudo apt install python3-venv"
+        exit 1
+    fi
 fi
 
 # Activate virtual environment
 echo "Activating virtual environment..."
 source venv/bin/activate
+
+# Check if activation was successful
+if [ -z "$VIRTUAL_ENV" ]; then
+    echo "Error: Failed to activate virtual environment."
+    echo "Please check if venv/bin/activate exists and try again."
+    exit 1
+fi
+
+echo "Virtual environment activated successfully."
 
 # Install or upgrade pip
 echo "Upgrading pip..."
@@ -144,11 +166,20 @@ fi
 # Create database tables
 echo "Initializing database..."
 export FLASK_APP=main.py
-flask shell <<EOF
+
+# Create a temporary Python script to initialize the database
+cat > init_db.py << EOF
 from app import db
-db.create_all()
-exit()
+with db.app.app_context():
+    db.create_all()
+    print("Database tables created successfully")
 EOF
+
+# Run the database initialization script
+python init_db.py
+
+# Clean up
+rm init_db.py
 
 # Done!
 echo ""
